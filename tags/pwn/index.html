@@ -71,7 +71,7 @@
 <div id="screen">
     <div id="mark">
         <div class="layer" data-depth="0.4">
-            <img src="/img/cover9.jpg" id="cover" crossorigin="anonymous" width="1920" height="1080">
+            <img src="/img/liming.jpg" id="cover" crossorigin="anonymous" width="1920" height="1080">
         </div>
     </div>
     <div id="vibrant">
@@ -88,15 +88,41 @@
     </div>
     
     <div id="post0">
-        <p>三月 04, 2020</p>
-        <h2><a href="/2020/03/04/ROP%E4%B9%8Bret2libc/" title="ROP之ret2libc" class="posttitle">ROP之ret2libc</a></h2>
-        <p class="summary">写在前面之前所说的ret2text,ret2shellcode,ret2syscall,都是静态编译的程序，今天聊...</p>
+        <p>三月 06, 2020</p>
+        <h2><a href="/2020/03/06/DynELF%E7%9A%84%E7%AE%80%E5%8D%95%E5%88%A9%E7%94%A8/" title="DynELF的简单利用" class="posttitle">DynELF的简单利用</a></h2>
+        <p class="summary">写在前面今天本来在看ctfwiki上的ret2_dl_runtime_resolve,当时有点小懵，但是看到他用的...</p>
     </div>
     
 </div>
 
     <div id="primary">
         
+<div class="post">
+    <a href="/2020/03/05/ROP%E4%B9%8B64%E4%BD%8D%E6%A0%88%E6%BA%A2%E5%87%BA/" title="ROP之64位栈溢出">
+        <img src="/img/dao.jpg" class="cover" width="680" height="440">
+    </a>
+    <div class="else">
+        <p>三月 05, 2020</p>
+        <h3><a href="/2020/03/05/ROP%E4%B9%8B64%E4%BD%8D%E6%A0%88%E6%BA%A2%E5%87%BA/" title="ROP之64位栈溢出" class="posttitle">ROP之64位栈溢出</a></h3>
+        <p>写在前面之前把32位程序的基本溢出操作和ROP手段总结完了，现在把64位程序栈溢出和基本ROP手法总结下，用以备忘。依然由简入深。
+bugku pwn2首...</p>
+    </div>
+</div>
+
+
+<div class="post">
+    <a href="/2020/03/04/ROP%E4%B9%8Bret2libc/" title="ROP之ret2libc">
+        <img src="/img/cover9.jpg" class="cover" width="680" height="440">
+    </a>
+    <div class="else">
+        <p>三月 04, 2020</p>
+        <h3><a href="/2020/03/04/ROP%E4%B9%8Bret2libc/" title="ROP之ret2libc" class="posttitle">ROP之ret2libc</a></h3>
+        <p>写在前面之前所说的ret2text,ret2shellcode,ret2syscall,都是静态编译的程序，今天聊一聊动态编译的ROP。
+动态编译与静态编...</p>
+    </div>
+</div>
+
+
 <div class="post">
     <a href="/2020/03/03/ROP%E4%B9%8Bret2syscall/" title="ROP之ret2syscall">
         <img src="/img/meimei3.jpg" class="cover" width="680" height="440">
@@ -105,30 +131,6 @@
         <p>三月 03, 2020</p>
         <h3><a href="/2020/03/03/ROP%E4%B9%8Bret2syscall/" title="ROP之ret2syscall" class="posttitle">ROP之ret2syscall</a></h3>
         <p>神马是ROPROP(Return Oriented Programming)，为绕NX而生，其主要思想是在栈缓冲区溢出的基础上，利用程序中已有的小片段 (...</p>
-    </div>
-</div>
-
-
-<div class="post">
-    <a href="/2020/02/28/%E6%A0%BC%E5%BC%8F%E5%8C%96%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%BC%8F%E6%B4%9E%E7%9A%84%E7%AE%80%E5%8D%95%E5%88%A9%E7%94%A8/" title="格式化字符串漏洞的简单利用">
-        <img src="/img/cover3.jpg" class="cover" width="680" height="440">
-    </a>
-    <div class="else">
-        <p>二月 28, 2020</p>
-        <h3><a href="/2020/02/28/%E6%A0%BC%E5%BC%8F%E5%8C%96%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%BC%8F%E6%B4%9E%E7%9A%84%E7%AE%80%E5%8D%95%E5%88%A9%E7%94%A8/" title="格式化字符串漏洞的简单利用" class="posttitle">格式化字符串漏洞的简单利用</a></h3>
-        <p>格式化字符串格式化字符串函数可以接受可变数量的参数，并将第一个参数作为格式化字符串，根据其来解析之后的参数。对格式化字符串函数利用不当，会造成格式化字符串...</p>
-    </div>
-</div>
-
-
-<div class="post">
-    <a href="/2020/02/28/%E6%A0%88%E6%BA%A2%E5%87%BA%E4%B9%8B%E8%A6%86%E7%9B%96%E6%A0%88%E3%80%81bss%E6%AE%B5%E5%8F%98%E9%87%8F/" title="栈溢出之覆盖栈、bss段变量">
-        <img src="/img/cover2.jpg" class="cover" width="680" height="440">
-    </a>
-    <div class="else">
-        <p>二月 28, 2020</p>
-        <h3><a href="/2020/02/28/%E6%A0%88%E6%BA%A2%E5%87%BA%E4%B9%8B%E8%A6%86%E7%9B%96%E6%A0%88%E3%80%81bss%E6%AE%B5%E5%8F%98%E9%87%8F/" title="栈溢出之覆盖栈、bss段变量" class="posttitle">栈溢出之覆盖栈、bss段变量</a></h3>
-        <p>写在前面之前说过栈溢出时，说过覆盖地址控制程序，主要会覆盖函数返回地址，覆盖栈上某个变量的内容或覆盖bss段某变量内容，之前ret2text就是覆盖的返回...</p>
     </div>
 </div>
 
